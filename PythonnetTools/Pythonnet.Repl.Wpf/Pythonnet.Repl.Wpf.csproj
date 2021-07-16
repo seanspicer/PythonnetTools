@@ -9,8 +9,14 @@
 
     <ItemGroup>
       <PackageReference Include="AvalonEdit" Version="6.1.2.30" />
+      <PackageReference Include="pythonnet" Version="3.0.0-preview2021-06-04" />
       <PackageReference Include="ReactiveUI" Version="14.1.1" />
       <PackageReference Include="ReactiveUI.WPF" Version="14.1.1" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="Resources\Python.xshd" />
+      <EmbeddedResource Include="Resources\Python.xshd" />
     </ItemGroup>
 
 </Project>
