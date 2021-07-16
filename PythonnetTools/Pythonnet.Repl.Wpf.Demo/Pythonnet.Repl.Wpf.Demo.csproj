@@ -6,4 +6,8 @@
         <UseWPF>true</UseWPF>
     </PropertyGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\Pythonnet.Repl.Wpf\Pythonnet.Repl.Wpf.csproj" />
+    </ItemGroup>
+
 </Project>
