@@ -22,7 +22,7 @@ namespace Pythonnet.Repl.Wpf
         
         protected virtual string Prompt { get { return ">>> "; } }
         public virtual string PromptContinuation { get { return "... "; } }
-        protected virtual string Logo { get { return null; } }
+        protected virtual string Logo => GetLogoDisplay();
 
         protected string LastPrompt = string.Empty;
         
@@ -36,6 +36,16 @@ namespace Pythonnet.Repl.Wpf
             ExitCode = 0;
         }
 
+        public static string GetLogoDisplay()
+        {
+            
+            using (Py.GIL())
+            {
+                return "Python " + PythonEngine.Version + " on " + PythonEngine.Platform
+                    + "\nType \"help\", \"copyright\", \"credits\" or \"license\" for more information.\n";
+            }
+        }
+        
         public void Run(PythonEngine engine, PythonOutputStream stream, IConsole console, ConsoleOptions consoleOptions)
         {
             _engine = engine;
@@ -58,8 +68,15 @@ namespace Pythonnet.Repl.Wpf
         
         protected virtual int RunInteractive() 
         {
-            //PrintLogo();
+            PrintLogo();
             return RunInteractiveLoop();
+        }
+
+        protected void PrintLogo()
+        {
+            if (Logo != null) {
+                _console.Write(Logo, Style.Out);
+            }
         }
 
         protected virtual int RunInteractiveLoop()
@@ -85,28 +102,34 @@ namespace Pythonnet.Repl.Wpf
 
         private int? RunOneInteraction()
         {
-            string s = ReadStatement(out bool continueInteraction);
+            var compiledScript = ReadStatement(out bool continueInteraction);
             
             if (continueInteraction == false) {
                 return _terminatingExitCode ?? 0;
             }
             
-            if (String.IsNullOrEmpty(s)) {
+            if (null == compiledScript) {
                 // Is it an empty line?
                 _console.Write(String.Empty, Style.Out);
                 return null;
             }
 
-            ExecuteCommand(s);
+            ExecuteCommand(compiledScript);
             return null;
         }
 
-        protected virtual void ExecuteCommand(string command) 
+        protected virtual void ExecuteCommand(PyObject compiledScript) 
         {
             using (Py.GIL())
             {
+                if (null == ScriptScope)
+                {
+                    ScriptScope = Py.CreateScope();
+                }
+                
+                
                 // Redirect stdout to text box
-                dynamic sys = PythonEngine.ImportModule("sys");
+                dynamic sys = ScriptScope.Import("sys");
 
                 string codeToRedirectOutput =
                     "import sys\n" +
@@ -115,27 +138,47 @@ namespace Pythonnet.Repl.Wpf
                     "sys.stdout.flush()\n" +
                     "sys.stderr = mystderr = StringIO()\n" +
                     "sys.stderr.flush()\n";
+
+                string codeToFlushOutput =
+                    "sys.stdout.flush()\n" +
+                    "sys.stderr.flush()\n";
                 
-                PythonEngine.RunString(codeToRedirectOutput);
-                
-                var result = PythonEngine.RunSimpleString(command);
-                if (0 == result)
+                ScriptScope.Exec(codeToRedirectOutput);
+
+                try
                 {
-                    string pyStdout = sys.stdout.getvalue(); // Get stdout
-                    using (var sw = new StreamWriter(_stream))
+                    var result = ScriptScope.Execute(compiledScript);
+                    //ScriptScope.Exec(codeToFlushOutput);
+
+                    //if (null != result)
                     {
-                        sw.Write(pyStdout);
+
+                        string pyStdout = sys.stdout.getvalue(); // Get stdout
+                        using (var sw = new StreamWriter(_stream))
+                        {
+                            sw.Write(pyStdout);
+                        }
+                    }
+                    //else
+                    {
+                        string pyStderr = sys.stderr.getvalue(); // Get stderr
+                        using (var sw = new StreamWriter(_stream))
+                        {
+                            sw.Write(pyStderr);
+                        }
                     }
                 }
-                else
+                catch (PythonException e)
                 {
                     string pyStderr = sys.stderr.getvalue(); // Get stderr
+                    
                     using (var sw = new StreamWriter(_stream))
                     {
                         sw.Write(pyStderr);
+                        sw.Write(e.Message + "\n");
                     }
                 }
-                
+
             }
         }
         
@@ -144,7 +187,7 @@ namespace Pythonnet.Repl.Wpf
             _terminatingExitCode = exitCode;
         }
         
-        protected string ReadStatement(out bool continueInteraction) {
+        protected PyObject ReadStatement(out bool continueInteraction) {
             StringBuilder b = new StringBuilder();
             int autoIndentSize = 0;
 
@@ -159,9 +202,14 @@ namespace Pythonnet.Repl.Wpf
                     continueInteraction = false;
                     return null;
                 }
+                
+                
 
                 //bool allowIncompleteStatement = TreatAsBlankLine(line, autoIndentSize);
                 b.Append(line);
+
+                
+                
                 // Note that this does not use Environment.NewLine because some languages (eg. Python) only
                 // recognize \n as a line terminator.
                 b.Append("\n");
@@ -169,11 +217,12 @@ namespace Pythonnet.Repl.Wpf
                 string code = b.ToString();
 
                 var codeCompiles = false;
+                PyObject compiledScript = null;
                 using (Py.GIL())
                 {
                     try
                     {
-                        var src = PythonEngine.Compile(code, "<stdin>", RunFlagType.Single);
+                        compiledScript = PythonEngine.Compile(code, "<stdin>", RunFlagType.Single);
 
                         if (LastPrompt == Prompt || code[^2] == '\n')
                         {
@@ -185,12 +234,18 @@ namespace Pythonnet.Repl.Wpf
                         if (e.Message.Contains("unexpected EOF while parsing"))
                         {
                             codeCompiles = false;
+                            
+                            if (string.IsNullOrEmpty(line)) return null;
                         }
                         else
                         {
                             if (LastPrompt == Prompt || code[^2] == '\n')
                             {
-                                codeCompiles = true;
+                                using (var sw = new StreamWriter(_stream))
+                                {
+                                    sw.Write(e.Message + "\n");
+                                }
+                                return null;
                             }
                         }
                     }
@@ -198,7 +253,7 @@ namespace Pythonnet.Repl.Wpf
 
                 if (codeCompiles)
                 {
-                    return code;
+                    return compiledScript;
                 }
                 
                 // var props = GetCommandProperties(code);
