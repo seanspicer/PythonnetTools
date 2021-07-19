@@ -1,8 +1,11 @@
 
 
 using System;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
+using System.Windows.Media;
 using Python.Runtime;
 
 namespace Pythonnet.Repl.Wpf
@@ -20,6 +23,11 @@ namespace Pythonnet.Repl.Wpf
         protected virtual string Prompt { get { return ">>> "; } }
         public virtual string PromptContinuation { get { return "... "; } }
         protected virtual string Logo { get { return null; } }
+
+        protected string LastPrompt = string.Empty;
+        
+        private static readonly char[] newLineChar = new char[] { '\n' };
+        private static readonly char[] whiteSpace = { ' ', '\t' };
         
         private int? _terminatingExitCode;
         
@@ -141,7 +149,8 @@ namespace Pythonnet.Repl.Wpf
             int autoIndentSize = 0;
 
             _console.Write(Prompt, Style.Prompt);
-
+            LastPrompt = Prompt;
+            
             while (true) {
                 string line = ReadLine(autoIndentSize);
                 continueInteraction = true;
@@ -159,19 +168,51 @@ namespace Pythonnet.Repl.Wpf
 
                 string code = b.ToString();
 
-                return code;
+                var codeCompiles = false;
+                using (Py.GIL())
+                {
+                    try
+                    {
+                        var src = PythonEngine.Compile(code, "<stdin>", RunFlagType.Single);
 
+                        if (LastPrompt == Prompt || code[^2] == '\n')
+                        {
+                            codeCompiles = true;
+                        }
+                    } 
+                    catch (PythonException e)
+                    {
+                        if (e.Message.Contains("unexpected EOF while parsing"))
+                        {
+                            codeCompiles = false;
+                        }
+                        else
+                        {
+                            if (LastPrompt == Prompt || code[^2] == '\n')
+                            {
+                                codeCompiles = true;
+                            }
+                        }
+                    }
+                }
+
+                if (codeCompiles)
+                {
+                    return code;
+                }
+                
                 // var props = GetCommandProperties(code);
                 // if (SourceCodePropertiesUtils.IsCompleteOrInvalid(props, allowIncompleteStatement)) {
                 //     return props != ScriptCodeParseResult.Empty ? code : null;
                 // }
                 //
-                // if (_options.AutoIndent && _options.AutoIndentSize != 0) {
-                //     autoIndentSize = GetNextAutoIndentSize(code);
-                // }
-                //
-                // // Keep on reading input
-                // _console.Write(PromptContinuation, Style.Prompt);
+                if (_consoleOptions.AutoIndent && _consoleOptions.AutoIndentSize != 0) {
+                    autoIndentSize = GetNextAutoIndentSize(code);
+                }
+                
+                // Keep on reading input
+                _console.Write(PromptContinuation, Style.Prompt);
+                LastPrompt = PromptContinuation;
             }
         }
         
@@ -184,8 +225,26 @@ namespace Pythonnet.Repl.Wpf
             return _console.ReadLine(autoIndentSize);
         }
         
-        protected virtual int GetNextAutoIndentSize(string text) {
-            return 0;
+        protected virtual int GetNextAutoIndentSize(string text)
+        {
+            Debug.Assert(text[text.Length - 1] == '\n');
+            string[] lines = text.Split(newLineChar);
+            if (lines.Length <= 1) return 0;
+            string lastLine = lines[lines.Length - 2];
+
+            // Figure out the number of white-spaces at the start of the last line
+            int startingSpaces = 0;
+            while (startingSpaces < lastLine.Length && lastLine[startingSpaces] == ' ')
+                startingSpaces++;
+
+            // Assume the same indent as the previous line
+            int autoIndentSize = startingSpaces;
+            // Increase the indent if this looks like the start of a compounds statement.
+            // Ideally, we would ask the parser to tell us the exact indentation level
+            if (lastLine.TrimEnd(whiteSpace).EndsWith(":"))
+                autoIndentSize += _consoleOptions.AutoIndentSize;
+
+            return autoIndentSize;
         }
     }
 }
