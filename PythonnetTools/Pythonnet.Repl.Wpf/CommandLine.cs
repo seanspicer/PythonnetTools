@@ -194,7 +194,6 @@ namespace Pythonnet.Repl.Wpf
                     using (var sw = new StreamWriter(_stream))
                     {
                         sw.Write(pyStderr);
-                        //sw.Write(e.Message + "\n");
                     }
                 }
 
