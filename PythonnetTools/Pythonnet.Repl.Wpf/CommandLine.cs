@@ -4,6 +4,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Windows.Media;
 using Python.Runtime;
@@ -13,6 +14,7 @@ namespace Pythonnet.Repl.Wpf
     public class CommandLine
     {
         public PyScope ScriptScope { get; internal set; }
+        private dynamic Sys { get; set; }
         public int ExitCode { get; set; }
 
         private PythonEngine _engine;
@@ -102,80 +104,97 @@ namespace Pythonnet.Repl.Wpf
 
         private int? RunOneInteraction()
         {
-            var compiledScript = ReadStatement(out bool continueInteraction);
+            var (compiledScript, code) = ReadStatement(out bool continueInteraction);
             
             if (continueInteraction == false) {
                 return _terminatingExitCode ?? 0;
             }
             
-            if (null == compiledScript) {
+            if (null == compiledScript && string.IsNullOrEmpty(code)) {
                 // Is it an empty line?
                 _console.Write(String.Empty, Style.Out);
                 return null;
             }
 
-            ExecuteCommand(compiledScript);
+            ExecuteCommand(compiledScript, code);
             return null;
         }
 
-        protected virtual void ExecuteCommand(PyObject compiledScript) 
+        protected virtual void ExecuteCommand(PyObject compiledScript, string code) 
         {
             using (Py.GIL())
             {
                 if (null == ScriptScope)
                 {
                     ScriptScope = Py.CreateScope();
+                    Sys = ScriptScope.Import("sys");
                 }
-                
-                
-                // Redirect stdout to text box
-                dynamic sys = ScriptScope.Import("sys");
-
-                string codeToRedirectOutput =
-                    "import sys\n" +
-                    "from io import StringIO\n" +
-                    "sys.stdout = mystdout = StringIO()\n" +
-                    "sys.stdout.flush()\n" +
-                    "sys.stderr = mystderr = StringIO()\n" +
-                    "sys.stderr.flush()\n";
-
-                string codeToFlushOutput =
-                    "sys.stdout.flush()\n" +
-                    "sys.stderr.flush()\n";
-                
-                ScriptScope.Exec(codeToRedirectOutput);
 
                 try
                 {
-                    var result = ScriptScope.Execute(compiledScript);
+                    string codeToRedirectOutput =
+                        "import sys\n" +
+                        "from io import StringIO\n" +
+                        "sys.stdout = mystdout = StringIO()\n" +
+                        "sys.stdout.flush()\n" +
+                        "sys.stderr = mystderr = StringIO()\n" +
+                        "sys.stderr.flush()\n";
+                    
+                    ScriptScope.Exec(codeToRedirectOutput);
+
+                    //Sys.stdin.write(compiledScript);
+                    PyObject result = null;
+                    if (null != compiledScript)
+                    {
+                        result = ScriptScope.Execute(compiledScript);
+                    }
+                    else
+                    {
+                        ScriptScope.Exec(code);
+                    }
                     //ScriptScope.Exec(codeToFlushOutput);
 
                     //if (null != result)
                     {
 
-                        string pyStdout = sys.stdout.getvalue(); // Get stdout
+                        string pyStdout = Sys.stdout.getvalue(); // Get stdout
                         using (var sw = new StreamWriter(_stream))
                         {
                             sw.Write(pyStdout);
                         }
+
+                        Sys.stdout.flush();
                     }
                     //else
                     {
-                        string pyStderr = sys.stderr.getvalue(); // Get stderr
+                        
+                        
+                        string pyStderr = Sys.stderr.getvalue(); // Get stderr
                         using (var sw = new StreamWriter(_stream))
                         {
                             sw.Write(pyStderr);
                         }
+
+                        Sys.stderr.flush();
                     }
+                    
+                    
                 }
                 catch (PythonException e)
                 {
-                    string pyStderr = sys.stderr.getvalue(); // Get stderr
+                    // Have to restore the error before you ask the REPL to print
+                    e.Restore();
+                    
+                    // Yargh.  PyErr_Print is internal static.   Use reflection to call it.
+                    var dynMethod = typeof(Runtime).GetMethod("PyErr_Print", BindingFlags.NonPublic | BindingFlags.Static);
+                    dynMethod?.Invoke(null, null);
+                    
+                    string pyStderr = Sys.stderr.getvalue(); // Get stderr
                     
                     using (var sw = new StreamWriter(_stream))
                     {
                         sw.Write(pyStderr);
-                        sw.Write(e.Message + "\n");
+                        //sw.Write(e.Message + "\n");
                     }
                 }
 
@@ -187,7 +206,7 @@ namespace Pythonnet.Repl.Wpf
             _terminatingExitCode = exitCode;
         }
         
-        protected PyObject ReadStatement(out bool continueInteraction) {
+        protected (PyObject, string) ReadStatement(out bool continueInteraction) {
             StringBuilder b = new StringBuilder();
             int autoIndentSize = 0;
 
@@ -200,7 +219,7 @@ namespace Pythonnet.Repl.Wpf
 
                 if (line == null || (_terminatingExitCode != null)) {
                     continueInteraction = false;
-                    return null;
+                    return (null, string.Empty);
                 }
                 
                 
@@ -235,17 +254,17 @@ namespace Pythonnet.Repl.Wpf
                         {
                             codeCompiles = false;
                             
-                            if (string.IsNullOrEmpty(line)) return null;
+                            if (string.IsNullOrEmpty(line)) return (null, line);
                         }
                         else
                         {
                             if (LastPrompt == Prompt || code[^2] == '\n')
                             {
-                                using (var sw = new StreamWriter(_stream))
-                                {
-                                    sw.Write(e.Message + "\n");
-                                }
-                                return null;
+                                // using (var sw = new StreamWriter(_stream))
+                                // {
+                                //     sw.Write(e.Message + "\n");
+                                // }
+                                return (null, code);
                             }
                         }
                     }
@@ -253,7 +272,7 @@ namespace Pythonnet.Repl.Wpf
 
                 if (codeCompiles)
                 {
-                    return compiledScript;
+                    return (compiledScript, code);
                 }
                 
                 // var props = GetCommandProperties(code);
