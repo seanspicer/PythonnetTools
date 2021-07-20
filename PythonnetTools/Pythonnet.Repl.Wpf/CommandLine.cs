@@ -36,6 +36,17 @@ namespace Pythonnet.Repl.Wpf
         public CommandLine()
         {
             ExitCode = 0;
+            PythonEngine.Initialize();
+            PythonEngine.BeginAllowThreads();
+            using (Py.GIL())
+            {
+                if (null == ScriptScope)
+                {
+                    ScriptScope = Py.CreateScope();
+                    Sys = ScriptScope.Import("sys");
+                }
+            }
+
         }
 
         public static string GetLogoDisplay()
@@ -120,6 +131,11 @@ namespace Pythonnet.Repl.Wpf
             return null;
         }
 
+        public void ExecuteStatements(string statements)
+        {
+            ExecuteCommand(null, statements);
+        }
+        
         protected virtual void ExecuteCommand(PyObject compiledScript, string code) 
         {
             using (Py.GIL())
@@ -221,12 +237,8 @@ namespace Pythonnet.Repl.Wpf
                     return (null, string.Empty);
                 }
                 
-                
-
                 //bool allowIncompleteStatement = TreatAsBlankLine(line, autoIndentSize);
                 b.Append(line);
-
-                
                 
                 // Note that this does not use Environment.NewLine because some languages (eg. Python) only
                 // recognize \n as a line terminator.

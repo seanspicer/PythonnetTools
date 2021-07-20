@@ -48,6 +48,8 @@ namespace Pythonnet.Repl.Wpf
                     = new PythonConsoleHighlightingColorizer(highlighter, _pad.Control.Document);
             }
             
+            
+            
             // this.WhenActivated(d =>
             // {
             //     Observable.FromEventPattern<TextCompositionEventArgs>(TextEditor.TextArea,
@@ -98,6 +100,32 @@ namespace Pythonnet.Repl.Wpf
             // });
         }
         
+        Action<PythonConsoleHost> hostAction;
+        
+        void Host_ConsoleCreated(object sender, EventArgs e)
+        {
+            Console.ConsoleInitialized += new ConsoleInitializedEventHandler(Console_ConsoleInitialized);
+        }
+
+        void Console_ConsoleInitialized(object sender, EventArgs e)
+        {
+            hostAction.Invoke(Host);
+        }
+
+        public PythonConsole Console
+        {
+            get { return _pad.Console; }
+        }
+
+        public PythonConsoleHost Host
+        {
+            get { return _pad.Host; }
+        }
+
+        public PythonConsolePad Pad
+        {
+            get { return _pad; }
+        }
 
     }
 }

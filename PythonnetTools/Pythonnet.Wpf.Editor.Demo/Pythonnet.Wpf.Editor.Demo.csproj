@@ -1,0 +1,40 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>netcoreapp3.1-windows</TargetFramework>
+        <UseWPF>true</UseWPF>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <Folder Include="Resources" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="Images\Copy.png" />
+      <Resource Include="Images\Copy.png" />
+      <None Remove="Images\Cut.png" />
+      <Resource Include="Images\Cut.png" />
+      <None Remove="Images\Delete.png" />
+      <Resource Include="Images\Delete.png" />
+      <None Remove="Images\Open.png" />
+      <Resource Include="Images\Open.png" />
+      <None Remove="Images\Paste.png" />
+      <Resource Include="Images\Paste.png" />
+      <None Remove="Images\Redo.png" />
+      <Resource Include="Images\Redo.png" />
+      <None Remove="Images\Run.png" />
+      <Resource Include="Images\Run.png" />
+      <None Remove="Images\Save.png" />
+      <Resource Include="Images\Save.png" />
+      <None Remove="Images\Undo.png" />
+      <Resource Include="Images\Undo.png" />
+      <None Remove="Images\WordWrap.png" />
+      <Resource Include="Images\WordWrap.png" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Pythonnet.Repl.Wpf\Pythonnet.Repl.Wpf.csproj" />
+    </ItemGroup>
+
+</Project>

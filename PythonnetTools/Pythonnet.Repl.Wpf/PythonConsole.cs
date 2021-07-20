@@ -334,11 +334,12 @@ namespace Pythonnet.Repl.Wpf
         public void RunStatements(string statements)
         {
             MoveToHomePosition();
-            lock (this.scriptText)
+            //lock (this.scriptText)
             {
                 this.scriptText = statements;
             }
-            dispatcher.BeginInvoke(new Action(delegate() { ExecuteStatements(); }));
+            ExecuteStatements();
+            //dispatcher.BeginInvoke(new Action(delegate() { ExecuteStatements(); }));
         }
 
         /// <summary>
@@ -346,40 +347,12 @@ namespace Pythonnet.Repl.Wpf
         /// </summary>
         void ExecuteStatements()
         {
-            throw new NotImplementedException();
-
-            // lock (scriptText)
-            // {
-            //     textEditor.Write("\r\n");
-            //     ScriptSource scriptSource = commandLine.ScriptScope.Engine.CreateScriptSourceFromString(scriptText, SourceCodeKind.Statements);
-            //
-            //     string error = "";
-            //     try
-            //     {
-            //         executing = true;
-            //         scriptSource.Execute(commandLine.ScriptScope);
-            //     }
-            //     catch (ThreadAbortException tae)
-            //     {
-            //         if (tae.ExceptionState is Microsoft.Scripting.KeyboardInterruptException) Thread.ResetAbort();
-            //         error = "KeyboardInterrupt" + System.Environment.NewLine;
-            //     }
-            //     catch (Microsoft.Scripting.SyntaxErrorException exception)
-            //     {
-            //         ExceptionOperations eo;
-            //         eo = commandLine.ScriptScope.Engine.GetService<ExceptionOperations>();
-            //         error = eo.FormatException(exception);
-            //     }
-            //     catch (Exception exception)
-            //     {
-            //         ExceptionOperations eo;
-            //         eo = commandLine.ScriptScope.Engine.GetService<ExceptionOperations>();
-            //         error = eo.FormatException(exception) + System.Environment.NewLine;
-            //     }
-            //     executing = false;
-            //     if (error != "") textEditor.Write(error);
-            //     textEditor.Write(prompt);
-            // }
+            //lock (scriptText)
+            {
+                textEditor.Write("\r\n");
+                commandLine.ExecuteStatements(scriptText);
+                textEditor.Write(prompt);
+            }
         }
 
         /// <summary>

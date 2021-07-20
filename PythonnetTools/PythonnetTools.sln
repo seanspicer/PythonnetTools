@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pythonnet.Repl.Wpf.Demo", "
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{2DE56908-AA7E-4CFB-B0FA-57B422C1F54F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Pythonnet.Wpf.Editor.Demo", "Pythonnet.Wpf.Editor.Demo\Pythonnet.Wpf.Editor.Demo.csproj", "{7BBCB775-6FDB-4CE7-A0A4-AC01087A3EB2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -22,8 +24,13 @@ Global
 		{00DFE24E-88E6-42FB-8AD8-1316E5FBE8F6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{00DFE24E-88E6-42FB-8AD8-1316E5FBE8F6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{00DFE24E-88E6-42FB-8AD8-1316E5FBE8F6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7BBCB775-6FDB-4CE7-A0A4-AC01087A3EB2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7BBCB775-6FDB-4CE7-A0A4-AC01087A3EB2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7BBCB775-6FDB-4CE7-A0A4-AC01087A3EB2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7BBCB775-6FDB-4CE7-A0A4-AC01087A3EB2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{00DFE24E-88E6-42FB-8AD8-1316E5FBE8F6} = {E69600E5-FECC-421E-849A-20851482E61F}
+		{7BBCB775-6FDB-4CE7-A0A4-AC01087A3EB2} = {E69600E5-FECC-421E-849A-20851482E61F}
 	EndGlobalSection
 EndGlobal
